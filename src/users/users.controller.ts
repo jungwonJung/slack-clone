@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LocalAuthGuard } from 'src/auth/local-auth.guard';
+import { LoggedInGuard } from 'src/auth/logged-in.guard';
+import { NotLoggedInGuard } from 'src/auth/not-logged-in.guard';
 import { User } from 'src/common/decorators/user.decorators';
 import { UserDto } from 'src/common/dto/user.dto';
 import { UndefinedToNullInterceptor } from 'src/common/interceptors/undefinedToNull.interceptor';
@@ -39,6 +41,7 @@ export class UsersController {
 
   @ApiOperation({ summary: '회원가입' })
   @Post()
+  @UseGuards(new NotLoggedInGuard())
   async join(@Body() bady: JoinRequestDto) {
     await this.usersService.join(bady.email, bady.nickname, bady.password);
   }
@@ -49,14 +52,15 @@ export class UsersController {
     type: UserDto,
   })
   @ApiOperation({ summary: '로그인' })
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(new LocalAuthGuard())
   @Post('login')
   LogIn(@User() user) {
-    return user;
+    return user || false;
   }
 
   @ApiOperation({ summary: '로그아웃' })
   @Post('logout')
+  @UseGuards(new LoggedInGuard())
   LogOut(@Req() req, @Res() res) {
     req.logOut();
     res.clearCookie('connect.sid', { httpOnly: true });
