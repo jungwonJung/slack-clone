@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { getMaxListeners } from 'process';
 import {
   Column,
@@ -34,6 +35,7 @@ export class Users {
     example: 'wjdwjd1501@gmail.com',
     description: '사용자 이메일',
   })
+  @IsEmail()
   @Column('varchar', { name: 'email', unique: true, length: 30 })
   email: string;
 
@@ -41,6 +43,8 @@ export class Users {
     example: '정정원',
     description: '사용자 닉네임',
   })
+  @IsString()
+  @IsNotEmpty()
   @Column('varchar', { name: 'nickname', length: 30 })
   nickname: string;
 
@@ -48,6 +52,8 @@ export class Users {
     example: 123123,
     description: '사용자 비밀번호',
   })
+  @IsString()
+  @IsNotEmpty()
   @Column('varchar', { name: 'password', length: 100, select: false })
   password: string;
 
