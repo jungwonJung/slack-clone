@@ -14,6 +14,27 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
 
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+  app.useStaticAssets(
+    process.env.NODE_ENV === 'production'
+      ? path.join(__dirname, '..', '..', 'uploads')
+      : path.join(__dirname, '..', 'uploads'),
+    {
+      prefix: '/uploads',
+    },
+  );
+  app.useStaticAssets(
+    process.env.NODE_ENV === 'production'
+      ? path.join(__dirname, '..', '..', 'public')
+      : path.join(__dirname, '..', 'public'),
+    {
+      prefix: '/dist',
+    },
+  );
+
   console.log(`현재 해당 포트에서 연결중 ${port}`);
 
   const config = new DocumentBuilder()
