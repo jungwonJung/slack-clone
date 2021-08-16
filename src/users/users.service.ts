@@ -1,4 +1,8 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Users } from 'src/entities/Users';
 import { Repository } from 'typeorm';
@@ -19,23 +23,27 @@ export class UsersService {
 
   async join(email: string, nickname: string, password: string) {
     const user = this.usersRepository.findOne({ where: { email } });
+
     if (user) {
-      throw new HttpException('이미 존재하는 이메일', 401);
+      throw new UnauthorizedException('이미 존재하는 사용자입니다');
     }
     const hashedPassword = await bcrypt.hash(password, 12);
+
     const returned = await this.usersRepository.save({
       email,
       nickname,
       password: hashedPassword,
     });
-    await this.workspaceMembersRepositoy.save({
-      UserId: returned.id,
-      WorkspaceId: 1,
-    });
+
+    const workspaceMembers = new WorkspaceMembers();
+    workspaceMembers.UserId = returned.id;
+    workspaceMembers.WorkspaceId = 1;
+
     await this.channelMembersRepositoy.save({
       UserId: returned.id,
       ChannelId: 1,
     });
+
     return true;
   }
 }
