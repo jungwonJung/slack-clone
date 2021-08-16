@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { throws } from 'assert';
 import { ChannelMembers } from 'src/entities/ChannelMembers';
 import { Channels } from 'src/entities/Channels';
 import { Users } from 'src/entities/Users';
@@ -32,5 +33,39 @@ export class WorkspacesService {
         WorkspaceMembers: [{ UserId: myId }],
       },
     });
+  }
+
+  async createWorkspace(name: string, url: string, myId: number) {
+    const workspace = this.workspacesRepository.create({
+      name,
+      url,
+      OwnerId: myId,
+    });
+    const returned = await this.workspacesRepository.save(workspace);
+
+    const workspaceMeber = new WorkspaceMembers();
+    workspaceMeber.UserId = myId;
+    workspaceMeber.WorkspaceId = returned.id;
+    await this.workspacesMembersRepository.save(workspaceMeber);
+
+    const channel = new Channels();
+    channel.name = '일반';
+    channel.WorkspaceId = returned.id;
+    const channelReturned = await this.channelsRepository.save(channel);
+
+    const channelMember = new ChannelMembers();
+    channelMember.UserId = myId;
+    channelMember.ChannelId = channelReturned.id;
+    await this.channelMembersRepository.save(channelMember);
+  }
+
+  async getWorkspaceMembers(url: string) {
+    this.usersRepository
+      .createQueryBuilder('user')
+      .innerJoin('user.WorkspaceMembers', 'members')
+      .innerJoin('members.Workspace', 'workspace', 'workspace.url = :url', {
+        url,
+      })
+      .getMany();
   }
 }
