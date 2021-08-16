@@ -1,69 +1,68 @@
 import {
+  Request,
   Body,
   Controller,
-  Get,
+  NotFoundException,
   Post,
-  Req,
-  Res,
   UseGuards,
-  UseInterceptors,
+  Get,
+  Response,
+  ForbiddenException,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { LocalAuthGuard } from 'src/auth/local-auth.guard';
-import { LoggedInGuard } from 'src/auth/logged-in.guard';
-import { NotLoggedInGuard } from 'src/auth/not-logged-in.guard';
-import { User } from 'src/common/decorators/user.decorators';
-import { UserDto } from 'src/common/dto/user.dto';
-import { UndefinedToNullInterceptor } from 'src/common/interceptors/undefinedToNull.interceptor';
+import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { LocalAuthGuard } from '../auth/local-auth.guard';
+import { NotLoggedInGuard } from '../auth/not-logged-in.guard';
+import { LoggedInGuard } from '../auth/logged-in.guard';
+import { Users } from '../entities/Users';
 import { JoinRequestDto } from './dto/join.request.dto';
 import { UsersService } from './users.service';
+import { User } from 'src/common/decorators/user.decorators';
 
-@UseInterceptors(UndefinedToNullInterceptor)
-@ApiTags('USER')
-@Controller('users')
+@ApiTags('USERS')
+@Controller('api/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private usersService: UsersService) {}
 
-  @ApiResponse({
-    status: 200,
-    description: '성공',
-    type: UserDto,
-  })
-  @ApiResponse({
-    status: 500,
-    description: '서버에러',
-  })
-  @ApiOperation({ summary: '내정보조회' })
+  @ApiCookieAuth('connect.sid')
+  @ApiOperation({ summary: '내 정보 가져오기' })
   @Get()
-  getUsers(@User() user) {
+  async getProfile(@User() user: Users) {
+    return user || false;
+  }
+
+  @ApiOperation({ summary: '로그인' })
+  @UseGuards(LocalAuthGuard)
+  @Post('login')
+  async login(@User() user: Users) {
     return user;
   }
 
   @ApiOperation({ summary: '회원가입' })
+  @UseGuards(NotLoggedInGuard)
   @Post()
-  @UseGuards(new NotLoggedInGuard())
-  async join(@Body() bady: JoinRequestDto) {
-    await this.usersService.join(bady.email, bady.nickname, bady.password);
+  async join(@Body() data: JoinRequestDto) {
+    const user = this.usersService.findByEmail(data.email);
+    if (!user) {
+      throw new NotFoundException();
+    }
+    const result = await this.usersService.join(
+      data.email,
+      data.nickname,
+      data.password,
+    );
+    if (result) {
+      return 'ok';
+    } else {
+      throw new ForbiddenException();
+    }
   }
 
-  @ApiResponse({
-    status: 200,
-    description: '성공',
-    type: UserDto,
-  })
-  @ApiOperation({ summary: '로그인' })
-  @UseGuards(new LocalAuthGuard())
-  @Post('login')
-  LogIn(@User() user) {
-    return user || false;
-  }
-
+  @ApiCookieAuth('connect.sid')
   @ApiOperation({ summary: '로그아웃' })
+  @UseGuards(LoggedInGuard)
   @Post('logout')
-  @UseGuards(new LoggedInGuard())
-  LogOut(@Req() req, @Res() res) {
-    req.logOut();
+  async logout(@Response() res) {
     res.clearCookie('connect.sid', { httpOnly: true });
-    res.send('ok');
+    return res.send('ok');
   }
 }
